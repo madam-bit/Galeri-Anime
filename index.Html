@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AnimeVault - Penyimpanan Foto Anime</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        anime: {
+                            purple: '#8b5cf6',
+                            pink: '#ec4899',
+                            cyan: '#06b6d4',
+                            dark: '#0b0f19',
+                            card: 'rgba(23, 31, 50, 0.75)',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts & Font Awesome Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0b0f19;
+            color: #f8fafc;
+            background-image: 
+                radial-gradient(circle at 15% 15%, rgba(139, 92, 246, 0.12) 0%, transparent 25%),
+                radial-gradient(circle at 85% 85%, rgba(236, 72, 153, 0.12) 0%, transparent 25%);
+            background-attachment: fixed;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #8b5cf6;
+        }
+
+        /* Glassmorphism Styling */
+        .glass-panel {
+            background: rgba(23, 31, 50, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .glass-modal {
+            background: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+
+        .neon-border-hover {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .neon-border-hover:hover {
+            box-shadow: 0 0 20px rgba(139, 92, 246, 0.35);
+            border-color: rgba(139, 92, 246, 0.6);
+        }
+
+        /* Grid View Toggle Support */
+        .masonry-grid {
+            column-count: 1;
+            column-gap: 1.25rem;
+        }
+        @media (min-width: 640px) { .masonry-grid { column-count: 2; } }
+        @media (min-width: 1024px) { .masonry-grid { column-count: 3; } }
+        @media (min-width: 1280px) { .masonry-grid { column-count: 4; } }
+        .masonry-item {
+            break-inside: avoid;
+            margin-bottom: 1.25rem;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-purple-500 selection:text-white">
+
+    <!-- Header Navigation Bar -->
+    <header class="sticky top-0 z-40 glass-panel border-b border-slate-800/80">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+            <!-- Logo & Title -->
+            <div class="flex items-center space-x-3 cursor-pointer" onclick="resetFilters()">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-purple-600 to-pink-500 flex items-center justify-center text-white shadow-lg shadow-purple-500/30">
+                    <i class="fa-solid fa-wand-magic-sparkles text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-extrabold bg-gradient-to-r from-purple-400 via-pink-400 to-cyan-400 bg-clip-text text-transparent tracking-wide">
+                        AnimeVault
+                    </h1>
+                    <p class="text-[11px] text-slate-400 hidden sm:block">Penyimpanan Foto Anime Pribadi</p>
+                </div>
+            </div>
+
+            <!-- Header Buttons -->
+            <div class="flex items-center space-x-2 sm:space-x-3">
+                <button onclick="confirmClearAll()" class="flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-medium text-red-400 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 transition-all">
+                    <i class="fa-solid fa-trash-can"></i>
+                    <span class="hidden md:inline">Hapus Semua</span>
+                </button>
+
+                <button onclick="openModal('addModal')" class="flex items-center space-x-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white px-4 py-2.5 rounded-xl font-semibold text-sm shadow-lg shadow-purple-500/25 transition-all transform hover:-translate-y-0.5 active:translate-y-0">
+                    <i class="fa-solid fa-plus text-sm"></i>
+                    <span>Tambah Foto</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full">
+        
+        <!-- Search, Filter & Settings Bar -->
+        <section class="glass-panel p-4 sm:p-5 rounded-2xl mb-8 border border-slate-800/80 shadow-xl">
+            <div class="flex flex-col lg:flex-row gap-4 justify-between items-stretch lg:items-center">
+                
+                <!-- Search Box -->
+                <div class="relative flex-1">
+                    <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                    <input type="text" id="searchInput" oninput="applyFilters()" placeholder="Cari berdasarkan judul, anime, atau tag..." 
+                        class="w-full pl-11 pr-10 py-2.5 bg-slate-900/90 border border-slate-700/70 rounded-xl text-sm focus:outline-none focus:border-purple-500 text-slate-200 placeholder-slate-500 transition-colors">
+                    <button id="clearSearchBtn" onclick="clearSearch()" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+
+                <!-- Category Filters -->
+                <div class="flex items-center space-x-2 overflow-x-auto pb-2 lg:pb-0 scrollbar-none" id="categoryFilterContainer">
+                    <!-- Categories auto-generated by JS -->
+                </div>
+
+                <!-- Favorit & View Toggle -->
+                <div class="flex items-center space-x-2 border-t lg:border-t-0 border-slate-800/80 pt-3 lg:pt-0 justify-between lg:justify-end">
+                    <button id="favFilterBtn" onclick="toggleFavoriteFilter()" class="px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700/60 flex items-center space-x-2 transition-all">
+                        <i class="fa-solid fa-heart text-pink-500"></i>
+                        <span>Favorit</span>
+                    </button>
+
+                    <div class="h-6 w-px bg-slate-800"></div>
+
+                    <div class="bg-slate-900/90 p-1 rounded-xl border border-slate-800 flex items-center space-x-1">
+                        <button onclick="changeView('grid')" id="viewGridBtn" class="p-2 rounded-lg text-slate-400 hover:text-white transition-all bg-purple-600 text-white" title="Mode Grid">
+                            <i class="fa-solid fa-border-all text-sm"></i>
+                        </button>
+                        <button onclick="changeView('masonry')" id="viewMasonryBtn" class="p-2 rounded-lg text-slate-400 hover:text-white transition-all" title="Mode Masonry">
+                            <i class="fa-solid fa-chart-bar text-sm rotate-90"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Active Filter Indicator Bar -->
+        <div id="filterStatus" class="hidden mb-6 flex items-center justify-between text-xs text-slate-400 bg-purple-950/30 border border-purple-800/40 px-4 py-2.5 rounded-xl">
+            <span id="filterStatusText">Menampilkan hasil...</span>
+            <button onclick="resetFilters()" class="text-purple-400 hover:text-purple-300 font-medium underline">Reset Filter</button>
+        </div>
+
+        <!-- Dynamic Photo Cards Grid -->
+        <div id="galleryContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <!-- Inserted via JavaScript -->
+        </div>
+
+        <!-- Initial Blank State / Empty View -->
+        <div id="emptyState" class="flex flex-col items-center justify-center py-20 text-center">
+            <div class="w-24 h-24 rounded-3xl bg-slate-800/50 border border-slate-700/50 flex items-center justify-center text-purple-400/80 mb-5 text-4xl shadow-2xl relative">
+                <i class="fa-solid fa-images"></i>
+                <span class="absolute -bottom-1 -right-1 flex h-4 w-4">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-4 w-4 bg-purple-500"></span>
+                </span>
+            </div>
+            <h3 class="text-xl font-bold text-slate-200 mb-2">Belum Ada Foto Anime</h3>
+            <p class="text-slate-400 text-sm max-w-sm mb-6 leading-relaxed">
+                Penyimpanan foto Anda masih kosong. Mulai tambahkan karakter atau wallpaper anime favorit Anda sekarang!
+            </p>
+            <button onclick="openModal('addModal')" class="flex items-center space-x-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white px-5 py-3 rounded-xl font-semibold text-sm shadow-xl shadow-purple-500/30 transition-all transform hover:scale-105">
+                <i class="fa-solid fa-plus"></i>
+                <span>Tambah Foto Pertama</span>
+            </button>
+        </div>
+    </main>
+
+    <!-- Add / Edit Photo Modal -->
+    <div id="addModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+        <div class="glass-modal w-full max-w-lg rounded-2xl p-6 shadow-2xl relative border border-slate-700/80 my-8">
+            <button onclick="closeModal('addModal')" class="absolute top-4 right-4 text-slate-400 hover:text-white w-8 h-8 rounded-full bg-slate-800/80 flex items-center justify-center transition-colors">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <h2 id="modalTitle" class="text-xl font-bold text-white mb-5 flex items-center space-x-2">
+                <i class="fa-solid fa-plus text-purple-400"></i>
+                <span>Tambah Foto Anime</span>
+            </h2>
+
+            <form id="photoForm" onsubmit="handleFormSubmit(event)" class="space-y-4">
+                <input type="hidden" id="editPhotoId">
+                
+                <!-- Input Type Switcher -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wider">Sumber Foto</label>
+                    <div class="grid grid-cols-2 gap-2 p-1 bg-slate-900/80 rounded-xl border border-slate-800">
+                        <button type="button" id="sourceFileBtn" onclick="switchImageSource('file')" class="py-2 text-xs font-semibold rounded-lg bg-purple-600 text-white transition-all">
+                            <i class="fa-solid fa-upload mr-1.5"></i> Upload dari HP/PC
+                        </button>
+                        <button type="button" id="sourceUrlBtn" onclick="switchImageSource('url')" class="py-2 text-xs font-semibold rounded-lg text-slate-400 hover:text-white transition-all">
+                            <i class="fa-solid fa-link mr-1.5"></i> URL Gambar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Image File Input -->
+                <div id="fileInputGroup">
+                    <label class="block text-xs font-medium text-slate-300 mb-1">Pilih File Gambar <span class="text-pink-500">*</span></label>
+                    <input type="file" id="imageFile" accept="image/*" onchange="previewFileImage(event)"
+                        class="w-full text-xs text-slate-400 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-purple-600/20 file:text-purple-300 hover:file:bg-purple-600/30 cursor-pointer border border-slate-700/80 rounded-xl bg-slate-900/50">
+                </div>
+
+                <!-- Image URL Input -->
+                <div id="urlInputGroup" class="hidden">
+                    <label class="block text-xs font-medium text-slate-300 mb-1">Paste Link URL Foto <span class="text-pink-500">*</span></label>
+                    <input type="url" id="imageUrl" placeholder="https://domain.com/gambar-anime.jpg" oninput="previewUrlImage()"
+                        class="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-sm focus:outline-none focus:border-purple-500 text-slate-200">
+                </div>
+
+                <!-- Thumbnail Preview Container -->
+                <div id="imagePreviewContainer" class="hidden h-40 w-full rounded-xl overflow-hidden relative bg-slate-900 border border-slate-800">
+                    <img id="imagePreview" src="" class="w-full h-full object-cover">
+                    <span class="absolute bottom-2 right-2 bg-slate-900/90 text-[10px] text-slate-300 px-2.5 py-1 rounded-lg backdrop-blur border border-slate-700">Preview</span>
+                </div>
+
+                <!-- Title Input -->
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1">Judul / Karakter / Anime <span class="text-pink-500">*</span></label>
+                    <input type="text" id="photoTitle" required placeholder="Contoh: Gojo Satoru - Jujutsu Kaisen" 
+                        class="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-sm focus:outline-none focus:border-purple-500 text-slate-200">
+                </div>
+
+                <!-- Category Input -->
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1">Kategori Tag <span class="text-pink-500">*</span></label>
+                    <select id="photoCategory" required class="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-sm focus:outline-none focus:border-purple-500 text-slate-200">
+                        <option value="Waifu">Waifu</option>
+                        <option value="Husbando">Husbando</option>
+                        <option value="Wallpaper">Wallpaper</option>
+                        <option value="Scene">Scene Anime</option>
+                        <option value="Fanart">Fanart</option>
+                        <option value="Chibi">Chibi</option>
+                        <option value="Lainnya">Lainnya</option>
+                    </select>
+                </div>
+
+                <!-- Description Input -->
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1">Catatan / Deskripsi (Opsional)</label>
+                    <textarea id="photoDescription" rows="2" placeholder="Catatan singkat tentang foto ini..." 
+                        class="w-full px-3.5 py-2 bg-slate-900 border border-slate-700 rounded-xl text-sm focus:outline-none focus:border-purple-500 text-slate-200 resize-none"></textarea>
+                </div>
+
+                <!-- Modal Actions -->
+                <div class="flex justify-end space-x-3 pt-2">
+                    <button type="button" onclick="closeModal('addModal')" class="px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition-colors">
+                        Batal
+                    </button>
+                    <button type="submit" class="px-5 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-purple-600/30 transition-all">
+                        Simpan Ke Vault
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Lightbox Modal Preview -->
+    <div id="lightboxModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 sm:p-6 bg-black/90 backdrop-blur-lg">
+        <div class="relative max-w-5xl w-full max-h-[90vh] glass-modal rounded-2xl overflow-hidden flex flex-col md:flex-row shadow-2xl border border-slate-800">
+            
+            <button onclick="closeModal('lightboxModal')" class="absolute top-3 right-3 z-20 text-white/80 hover:text-white bg-slate-900/80 hover:bg-slate-900 w-9 h-9 rounded-full flex items-center justify-center transition-all backdrop-blur border border-slate-700">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+
+            <!-- Lightbox Image View -->
+            <div class="md:w-2/3 bg-black/70 flex items-center justify-center p-2 relative group min-h-[250px] max-h-[50vh] md:max-h-[85vh]">
+                <img id="lightboxImage" src="" alt="" class="max-h-full max-w-full object-contain rounded-lg">
+            </div>
+
+            <!-- Lightbox Metadata Sidebar -->
+            <div class="md:w-1/3 p-6 flex flex-col justify-between bg-slate-900/90 border-t md:border-t-0 md:border-l border-slate-800 overflow-y-auto">
+                <div>
+                    <div class="flex items-center justify-between mb-3">
+                        <span id="lightboxCategory" class="px-3 py-1 bg-purple-500/20 text-purple-300 text-[11px] font-bold rounded-full border border-purple-500/30 uppercase tracking-wider">
+                            Kategori
+                        </span>
+                        <span id="lightboxDate" class="text-xs text-slate-500">
+                            Tanggal
+                        </span>
+                    </div>
+
+                    <h3 id="lightboxTitle" class="text-lg font-bold text-white mb-2 leading-snug"></h3>
+                    <p id="lightboxDescription" class="text-slate-400 text-xs leading-relaxed mb-6 whitespace-pre-line"></p>
+                </div>
+
+                <!-- Lightbox Action Bar -->
+                <div class="space-y-3 pt-4 border-t border-slate-800">
+                    <div class="grid grid-cols-2 gap-2">
+                        <button id="lightboxFavBtn" class="py-2.5 px-3 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold flex items-center justify-center space-x-2 transition-all">
+                            <i class="fa-regular fa-heart"></i>
+                            <span id="lightboxFavText">Sukai</span>
+                        </button>
+                        <a id="lightboxDownloadBtn" download target="_blank" class="py-2.5 px-3 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold flex items-center justify-center space-x-2 transition-all">
+                            <i class="fa-solid fa-download"></i>
+                            <span>Unduh</span>
+                        </a>
+                    </div>
+                    
+                    <div class="flex items-center space-x-2">
+                        <button id="lightboxEditBtn" class="flex-1 py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium flex items-center justify-center space-x-1.5 transition-all">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                            <span>Edit</span>
+                        </button>
+                        <button id="lightboxDeleteBtn" class="flex-1 py-2 px-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 text-xs font-medium flex items-center justify-center space-x-1.5 transition-all">
+                            <i class="fa-solid fa-trash"></i>
+                            <span>Hapus</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 ease-out pointer-events-none">
+        <div class="glass-panel px-4 py-3 rounded-xl shadow-2xl flex items-center space-x-3 border border-purple-500/30">
+            <div id="toastIcon" class="text-purple-400">
+                <i class="fa-solid fa-circle-check"></i>
+            </div>
+            <p id="toastMessage" class="text-xs font-semibold text-slate-200">Notifikasi</p>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-800/80 mt-12 py-6 text-center text-xs text-slate-500">
+        <p>AnimeVault &copy; 2026 - Galeri Foto Anime Pribadi. Tersimpan Aman di Browser Anda.</p>
+    </footer>
+
+    <script>
+        // App State
+        let photoStore = [];
+        let currentCategory = 'Semua';
+        let currentSearchQuery = '';
+        let showOnlyFavorites = false;
+        let currentViewMode = 'grid'; 
+        let currentImageSourceType = 'file'; // 'file' | 'url'
+        let base64FileBuffer = '';
+
+        const CATEGORIES = ['Semua', 'Waifu', 'Husbando', 'Wallpaper', 'Scene', 'Fanart', 'Chibi', 'Lainnya'];
+
+        // Initial Load
+        window.addEventListener('DOMContentLoaded', () => {
+            loadPhotosFromStorage();
+            renderCategoryFilters();
+            renderGallery();
+        });
+
+        // LocalStorage Logic
+        function loadPhotosFromStorage() {
+            const stored = localStorage.getItem('anime_vault_photos_empty_init');
+            if (stored) {
+                try {
+                    photoStore = JSON.parse(stored);
+                } catch (e) {
+                    console.error('Gagal membaca LocalStorage:', e);
+                    photoStore = [];
+                }
+            } else {
+                photoStore = []; // Default starts EMPTY
+            }
+        }
+
+        function savePhotosToStorage() {
+            localStorage.setItem('anime_vault_photos_empty_init', JSON.stringify(photoStore));
+        }
+
+        function renderCategoryFilters() {
+            const container = document.getElementById('categoryFilterContainer');
+            container.innerHTML = CATEGORIES.map(cat => {
+                const isActive = currentCategory === cat;
+                const activeClasses = isActive 
+                    ? 'bg-purple-600 text-white font-bold shadow-md shadow-purple-600/30' 
+                    : 'bg-slate-900/80 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800';
+                
+                return `
+                    <button onclick="filterByCategory('${cat}')" 
+                        class="px-3.5 py-1.5 rounded-xl text-xs whitespace-nowrap transition-all ${activeClasses}">
+                        ${cat}
+                    </button>
+                `;
+            }).join('');
+        }
+
+        function filterByCategory(cat) {
+            currentCategory = cat;
+            renderCategoryFilters();
+            renderGallery();
+            updateFilterStatus();
+        }
+
+        function toggleFavoriteFilter() {
+            showOnlyFavorites = !showOnlyFavorites;
+            const btn = document.getElementById('favFilterBtn');
+            if (showOnlyFavorites) {
+                btn.classList.add('bg-pink-600/20', 'border-pink-500/50', 'text-pink-300');
+                btn.classList.remove('bg-slate-800/80', 'text-slate-300');
+            } else {
+                btn.classList.remove('bg-pink-600/20', 'border-pink-500/50', 'text-pink-300');
+                btn.classList.add('bg-slate-800/80', 'text-slate-300');
+            }
+            renderGallery();
+            updateFilterStatus();
+        }
+
+        function applyFilters() {
+            const input = document.getElementById('searchInput');
+            currentSearchQuery = input.value.trim().toLowerCase();
+            
+            const clearBtn = document.getElementById('clearSearchBtn');
+            if (currentSearchQuery.length > 0) {
+                clearBtn.classList.remove('hidden');
+            } else {
+                clearBtn.classList.add('hidden');
+            }
+
+            renderGallery();
+            updateFilterStatus();
+        }
+
+        function clearSearch() {
+            document.getElementById('searchInput').value = '';
+            currentSearchQuery = '';
+            document.getElementById('clearSearchBtn').classList.add('hidden');
+            renderGallery();
+            updateFilterStatus();
+        }
+
+        function resetFilters() {
+            currentCategory = 'Semua';
+            currentSearchQuery = '';
+            showOnlyFavorites = false;
+            document.getElementById('searchInput').value = '';
+            document.getElementById('clearSearchBtn').classList.add('hidden');
+            
+            const favBtn = document.getElementById('favFilterBtn');
+            favBtn.classList.remove('bg-pink-600/20', 'border-pink-500/50', 'text-pink-300');
+            favBtn.classList.add('bg-slate-800/80', 'text-slate-300');
+
+            renderCategoryFilters();
+            renderGallery();
+            updateFilterStatus();
+        }
+
+        function updateFilterStatus() {
+            const statusBox = document.getElementById('filterStatus');
+            const statusText = document.getElementById('filterStatusText');
+            
+            let activeConditions = [];
+            if (currentCategory !== 'Semua') activeConditions.push(`Kategori: "${currentCategory}"`);
+            if (currentSearchQuery !== '') activeConditions.push(`Cari: "${currentSearchQuery}"`);
+            if (showOnlyFavorites) activeConditions.push(`Favorit`);
+
+            if (activeConditions.length > 0) {
+                statusText.textContent = `Filter aktif: ${activeConditions.join(' | ')}`;
+                statusBox.classList.remove('hidden');
+            } else {
+                statusBox.classList.add('hidden');
+            }
+        }
+
+        function changeView(mode) {
+            currentViewMode = mode;
+            const gridBtn = document.getElementById('viewGridBtn');
+            const masonryBtn = document.getElementById('viewMasonryBtn');
+
+            if (mode === 'grid') {
+                gridBtn.classList.add('bg-purple-600', 'text-white');
+                gridBtn.classList.remove('text-slate-400');
+                masonryBtn.classList.remove('bg-purple-600', 'text-white');
+                masonryBtn.classList.add('text-slate-400');
+            } else {
+                masonryBtn.classList.add('bg-purple-600', 'text-white');
+                masonryBtn.classList.remove('text-slate-400');
+                gridBtn.classList.remove('bg-purple-600', 'text-white');
+                gridBtn.classList.add('text-slate-400');
+            }
+
+            renderGallery();
+        }
+
+        function renderGallery() {
+            const container = document.getElementById('galleryContainer');
+            const emptyState = document.getElementById('emptyState');
+
+            let filtered = photoStore.filter(photo => {
+                const matchCategory = currentCategory === 'Semua' || photo.category === currentCategory;
+                const matchSearch = photo.title.toLowerCase().includes(currentSearchQuery) || 
+                                    (photo.description && photo.description.toLowerCase().includes(currentSearchQuery)) ||
+                                    photo.category.toLowerCase().includes(currentSearchQuery);
+                const matchFav = !showOnlyFavorites || photo.isFavorite;
+
+                return matchCategory && matchSearch && matchFav;
+            });
+
+            if (filtered.length === 0) {
+                container.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                emptyState.classList.add('flex');
+                return;
+            } else {
+                emptyState.classList.add('hidden');
+                emptyState.classList.remove('flex');
+            }
+
+            if (currentViewMode === 'masonry') {
+                container.className = 'masonry-grid';
+            } else {
+                container.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6';
+            }
+
+            container.innerHTML = filtered.map(photo => {
+                const isMasonry = currentViewMode === 'masonry';
+                const wrapperClass = isMasonry ? 'masonry-item' : '';
+                
+                return `
+                    <div class="${wrapperClass} group relative glass-panel rounded-2xl overflow-hidden border border-slate-800 neon-border-hover transition-all duration-300 flex flex-col">
+                        <div class="relative overflow-hidden bg-slate-900 cursor-pointer ${isMasonry ? 'min-h-[160px]' : 'h-64'}" onclick="openLightbox('${photo.id}')">
+                            <img src="${photo.url}" alt="${photo.title}" 
+                                onerror="this.onerror=null; this.src='https://placehold.co/600x400/1e293b/8b5cf6?text=Gambar+Rusak';"
+                                class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105">
+                            <div class="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-transparent to-transparent opacity-60 group-hover:opacity-40 transition-opacity"></div>
+                            
+                            <span class="absolute top-3 left-3 bg-slate-900/80 backdrop-blur border border-slate-700/80 text-purple-300 text-[10px] font-bold px-2.5 py-1 rounded-lg">
+                                ${photo.category}
+                            </span>
+
+                            <button onclick="event.stopPropagation(); toggleFavorite('${photo.id}')" 
+                                class="absolute top-3 right-3 w-8 h-8 rounded-full bg-slate-900/80 backdrop-blur border border-slate-700/80 flex items-center justify-center text-slate-300 hover:text-pink-500 transition-colors">
+                                <i class="${photo.isFavorite ? 'fa-solid text-pink-500' : 'fa-regular'} fa-heart text-xs"></i>
+                            </button>
+                        </div>
+
+                        <div class="p-4 flex-1 flex flex-col justify-between">
+                            <div>
+                                <h3 class="text-sm font-bold text-slate-100 group-hover:text-purple-400 transition-colors truncate" title="${photo.title}">
+                                    ${photo.title}
+                                </h3>
+                                <p class="text-slate-400 text-xs mt-1 line-clamp-2">
+                                    ${photo.description || 'Tanpa catatan.'}
+                                </p>
+                            </div>
+
+                            <div class="flex items-center justify-between mt-4 pt-3 border-t border-slate-800/80 text-[11px] text-slate-500">
+                                <span>${formatDate(photo.createdAt)}</span>
+                                <div class="flex items-center space-x-2">
+                                    <button onclick="openEditModal('${photo.id}')" class="hover:text-purple-400 p-1" title="Edit">
+                                        <i class="fa-solid fa-pen-to-square"></i>
+                                    </button>
+                                    <button onclick="deletePhoto('${photo.id}')" class="hover:text-red-400 p-1" title="Hapus">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function switchImageSource(type) {
+            currentImageSourceType = type;
+            const urlBtn = document.getElementById('sourceUrlBtn');
+            const fileBtn = document.getElementById('sourceFileBtn');
+            const urlGroup = document.getElementById('urlInputGroup');
+            const fileGroup = document.getElementById('fileInputGroup');
+
+            if (type === 'url') {
+                urlBtn.className = 'py-2 text-xs font-semibold rounded-lg bg-purple-600 text-white transition-all';
+                fileBtn.className = 'py-2 text-xs font-semibold rounded-lg text-slate-400 hover:text-white transition-all';
+                urlGroup.classList.remove('hidden');
+                fileGroup.classList.add('hidden');
+            } else {
+                fileBtn.className = 'py-2 text-xs font-semibold rounded-lg bg-purple-600 text-white transition-all';
+                urlBtn.className = 'py-2 text-xs font-semibold rounded-lg text-slate-400 hover:text-white transition-all';
+                fileGroup.classList.remove('hidden');
+                urlGroup.classList.add('hidden');
+            }
+        }
+
+        function previewFileImage(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    base64FileBuffer = e.target.result;
+                    const preview = document.getElementById('imagePreview');
+                    const previewContainer = document.getElementById('imagePreviewContainer');
+                    preview.src = base64FileBuffer;
+                    previewContainer.classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function previewUrlImage() {
+            const url = document.getElementById('imageUrl').value.trim();
+            const preview = document.getElementById('imagePreview');
+            const previewContainer = document.getElementById('imagePreviewContainer');
+
+            if (url) {
+                preview.src = url;
+                previewContainer.classList.remove('hidden');
+            } else {
+                previewContainer.classList.add('hidden');
+            }
+        }
+
+        function handleFormSubmit(e) {
+            e.preventDefault();
+
+            const editId = document.getElementById('editPhotoId').value;
+            const title = document.getElementById('photoTitle').value.trim();
+            const category = document.getElementById('photoCategory').value;
+            const description = document.getElementById('photoDescription').value.trim();
+
+            let finalImageUrl = '';
+
+            if (currentImageSourceType === 'url') {
+                finalImageUrl = document.getElementById('imageUrl').value.trim();
+                if (!finalImageUrl) {
+                    showToast('Harap masukkan URL gambar!', 'error');
+                    return;
+                }
+            } else {
+                if (!base64FileBuffer && !editId) {
+                    showToast('Harap pilih file gambar untuk diupload!', 'error');
+                    return;
+                }
+                finalImageUrl = base64FileBuffer;
+            }
+
+            if (editId) {
+                const index = photoStore.findIndex(p => p.id === editId);
+                if (index !== -1) {
+                    photoStore[index].title = title;
+                    photoStore[index].category = category;
+                    photoStore[index].description = description;
+                    if (finalImageUrl) {
+                        photoStore[index].url = finalImageUrl;
+                    }
+                    showToast('Data foto berhasil diperbarui!');
+                }
+            } else {
+                const newPhoto = {
+                    id: 'photo_' + Date.now(),
+                    title: title,
+                    category: category,
+                    url: finalImageUrl,
+                    description: description,
+                    isFavorite: false,
+                    createdAt: new Date().toISOString()
+                };
+                photoStore.unshift(newPhoto);
+                showToast('Foto anime baru tersimpan!');
+            }
+
+            savePhotosToStorage();
+            renderGallery();
+            closeModal('addModal');
+            resetForm();
+        }
+
+        function resetForm() {
+            document.getElementById('photoForm').reset();
+            document.getElementById('editPhotoId').value = '';
+            document.getElementById('imagePreviewContainer').classList.add('hidden');
+            base64FileBuffer = '';
+            document.getElementById('modalTitle').innerHTML = `
+                <i class="fa-solid fa-plus text-purple-400"></i>
+                <span>Tambah Foto Anime</span>
+            `;
+            switchImageSource('file');
+        }
+
+        function openLightbox(id) {
+            const photo = photoStore.find(p => p.id === id);
+            if (!photo) return;
+
+            document.getElementById('lightboxImage').src = photo.url;
+            document.getElementById('lightboxTitle').textContent = photo.title;
+            document.getElementById('lightboxCategory').textContent = photo.category;
+            document.getElementById('lightboxDescription').textContent = photo.description || 'Tanpa deskripsi.';
+            document.getElementById('lightboxDate').textContent = formatDate(photo.createdAt);
+
+            const dlBtn = document.getElementById('lightboxDownloadBtn');
+            dlBtn.href = photo.url;
+            dlBtn.download = `${photo.title.replace(/\s+/g, '-').toLowerCase()}-anime.jpg`;
+
+            const favBtn = document.getElementById('lightboxFavBtn');
+            const favText = document.getElementById('lightboxFavText');
+            favBtn.onclick = () => {
+                toggleFavorite(id);
+                openLightbox(id);
+            };
+
+            if (photo.isFavorite) {
+                favBtn.className = "py-2.5 px-3 rounded-xl border border-pink-500/50 bg-pink-500/20 text-pink-300 text-xs font-semibold flex items-center justify-center space-x-2 transition-all";
+                favText.textContent = "Disukai";
+            } else {
+                favBtn.className = "py-2.5 px-3 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold flex items-center justify-center space-x-2 transition-all";
+                favText.textContent = "Sukai";
+            }
+
+            document.getElementById('lightboxEditBtn').onclick = () => {
+                closeModal('lightboxModal');
+                openEditModal(id);
+            };
+
+            document.getElementById('lightboxDeleteBtn').onclick = () => {
+                closeModal('lightboxModal');
+                deletePhoto(id);
+            };
+
+            openModal('lightboxModal');
+        }
+
+        function toggleFavorite(id) {
+            const photo = photoStore.find(p => p.id === id);
+            if (photo) {
+                photo.isFavorite = !photo.isFavorite;
+                savePhotosToStorage();
+                renderGallery();
+                showToast(photo.isFavorite ? 'Ditambahkan ke Favorit' : 'Dihapus dari Favorit');
+            }
+        }
+
+        function openEditModal(id) {
+            const photo = photoStore.find(p => p.id === id);
+            if (!photo) return;
+
+            resetForm();
+            document.getElementById('editPhotoId').value = photo.id;
+            document.getElementById('photoTitle').value = photo.title;
+            document.getElementById('photoCategory').value = photo.category;
+            document.getElementById('photoDescription').value = photo.description || '';
+
+            if (photo.url.startsWith('data:image')) {
+                switchImageSource('file');
+                base64FileBuffer = photo.url;
+                document.getElementById('imagePreview').src = photo.url;
+                document.getElementById('imagePreviewContainer').classList.remove('hidden');
+            } else {
+                switchImageSource('url');
+                document.getElementById('imageUrl').value = photo.url;
+                document.getElementById('imagePreview').src = photo.url;
+                document.getElementById('imagePreviewContainer').classList.remove('hidden');
+            }
+
+            document.getElementById('modalTitle').innerHTML = `
+                <i class="fa-solid fa-pen-to-square text-purple-400"></i>
+                <span>Edit Foto Anime</span>
+            `;
+
+            openModal('addModal');
+        }
+
+        function deletePhoto(id) {
+            if (confirm('Apakah Anda yakin ingin menghapus foto anime ini?')) {
+                photoStore = photoStore.filter(p => p.id !== id);
+                savePhotosToStorage();
+                renderGallery();
+                showToast('Foto berhasil dihapus');
+            }
+        }
+
+        function confirmClearAll() {
+            if (photoStore.length === 0) {
+                showToast('Galeri sudah kosong!', 'error');
+                return;
+            }
+            if (confirm('PERINGATAN: Apakah Anda yakin ingin menghapus SELURUH foto di penyimpanan? Tindakan ini tidak dapat dibatalkan.')) {
+                photoStore = [];
+                savePhotosToStorage();
+                resetFilters();
+                renderGallery();
+                showToast('Seluruh galeri telah dikosongkan!');
+            }
+        }
+
+        function openModal(modalId) {
+            document.getElementById(modalId).classList.remove('hidden');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.add('hidden');
+            if (modalId === 'addModal') resetForm();
+        }
+
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toastMessage');
+            const toastIcon = document.getElementById('toastIcon');
+
+            toastMessage.textContent = message;
+
+            if (type === 'error') {
+                toastIcon.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-red-400"></i>`;
+            } else {
+                toastIcon.innerHTML = `<i class="fa-solid fa-circle-check text-purple-400"></i>`;
+            }
+
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return '';
+            const options = { year: 'numeric', month: 'short', day: 'numeric' };
+            return new Date(dateString).toLocaleDateString('id-ID', options);
+        }
+    </script>
+</body>
+</html>
